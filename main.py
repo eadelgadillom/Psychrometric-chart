@@ -4,6 +4,8 @@ from psychrolib import *
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from adjustText import adjust_text
+import csv
 
 # Set SI Units
 SetUnitSystem(SI)
@@ -60,7 +62,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     if hasattr(plot_psychrometric_chart, "canvas"):
         plot_psychrometric_chart.canvas.get_tk_widget().destroy()
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(8, 6))
 
     # Adjust T_range based on input temperature
     max_T = max(50, Tdb + 20)
@@ -109,7 +111,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
 
     # --- Constant Enthalpy Lines ---
     h_step = 10  # kJ/kg
-    max_h = int(max(50, enthalpy + 20))  # Use the calculated enthalpy here
+    max_h = int(max(50, enthalpy + 50))
     for h_val in range(0, max_h, h_step):
         W_h = []
         valid_T = []
@@ -129,18 +131,32 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
         W_h_array = np.array(W_h) * 1000  # Convert to g/kg
         (line,) = ax.plot(valid_T, W_h_array, "r:", alpha=0.4, lw=0.8)
 
-        # Add label at a suitable position
+        # --- Etiqueta para CADA línea de entalpía ---
         valid_indices = ~np.isnan(W_h_array)
         if np.any(valid_indices):
-            idx = np.where(valid_indices)[0][-1]  # Use last valid point
+            idx = np.where(valid_indices)[0][-1]  # Último punto válido
             ax.text(
-                valid_T[idx],
+                valid_T[idx], 
                 W_h_array[idx],
-                f"{h_val}",
+                f"{h_val}",  # Muestra el valor de entalpía (ej: "20")
                 fontsize=7,
                 color="red",
                 alpha=0.6,
+                ha="left",
+                va="center"
             )
+
+    # --- Label general (fuera del bucle) ---
+    ax.text(
+        0.02, 
+        0.95, 
+        "Enthalpy (kJ/kg)",
+        transform=ax.transAxes,
+        fontsize=9,
+        color="red",
+        alpha=0.7,
+        bbox=dict(facecolor="white", edgecolor="red", boxstyle="round,pad=0.3")
+    )
 
     # --- Constant wet bulb temperature lines ---
     wb_step = 5  # °C
@@ -179,10 +195,8 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
                 alpha=0.6,
             )
 
-
-
     # --- Calculated point ---
-    ax.plot(Tdb, W * 1000, "ro", markersize=8, label="Current State")
+    ax.plot(Tdb, W * 1000, "ro", markersize=8, label="Current State", )
     ax.annotate(
         f"Tdb={Tdb:.1f}°C\nRH={RH*100:.1f}%\nW={W*1000:.1f}g/kg",
         (Tdb, W * 1000),
@@ -202,7 +216,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     ax.set_xlim(min_T, max_T)
     ax.set_ylim(0, max_y)
 
-    ax.legend(loc="upper left")
+    ax.legend(loc="upper right")
 
     # Display in Tkinter
     canvas = FigureCanvasTkAgg(fig, master=graph_frame)
@@ -211,13 +225,65 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     plot_psychrometric_chart.canvas = canvas
 
 
-# Create the GUI application
+def export_plot_as_png():
+    if not hasattr(plot_psychrometric_chart, "canvas"):
+        messagebox.showerror("Error", "Plot don´t exist")
+        return
+
+    file_path = tk.filedialog.asksaveasfilename(
+        defaultextension=".png",
+        filetypes=[("PNG Image", "*.png"), ("All Files", "*.*")],
+        title="Save plot as PNG",
+    )
+
+    if file_path:
+        try:
+            plot_psychrometric_chart.canvas.figure.savefig(file_path, dpi=300)
+            messagebox.showinfo("Éxito", f"Plot saved in:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Plot can't be saved:\n{e}")
+
+
+def export_data_as_csv():
+    if not result_text.get().startswith("Atmospheric Pressure:"):
+        messagebox.showerror("Error", "Data don't exist.")
+        return
+
+    file_path = tk.filedialog.asksaveasfilename(
+        defaultextension=".csv",
+        filetypes=[("CSV File", "*.csv"), ("All Files", "*.*")],
+        title="Save results as CSV",
+    )
+
+    if file_path:
+        try:
+            # Extraer datos del texto de resultados
+            lines = result_text.get().split("\n")
+            data = {
+                line.split(":")[0].strip(): line.split(":")[1].strip()
+                for line in lines
+                if ":" in line
+            }
+
+            # Escribir en CSV
+            with open(file_path, mode="w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(["Parámetro", "Valor"])  # Encabezado
+                for key, value in data.items():
+                    writer.writerow([key, value])
+
+            messagebox.showinfo("Éxito", f"Data saved in:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Data can't be saved in CSV:\n{e}")
+
+
+# __________________Create the GUI application________________________
 def create_gui():
     global root, frame, entry_temp, entry_rh, result_text, graph_frame
 
     root = tk.Tk()
     root.title("Psychrometric Calculator")
-    root.geometry("1000x800")  # Set initial window size
+    root.geometry("800x800")  # Set initial window size
 
     # Create main frame with padding
     main_frame = tk.Frame(root, padx=10, pady=10)
@@ -258,6 +324,29 @@ def create_gui():
         main_frame, text="Psychrometric Properties", padx=10, pady=10
     )
     results_frame.pack(fill=tk.X, padx=5, pady=5)
+
+    export_frame = tk.Frame(results_frame)
+    export_frame.pack(fill=tk.X, pady=5)
+
+    # Botón para exportar gráfico
+    btn_export_png = tk.Button(
+        export_frame, 
+        text="Save Plot (PNG)", 
+        command=lambda: export_plot_as_png(),
+        bg="#2196F3",
+        fg="white"
+    )
+    btn_export_png.pack(side=tk.LEFT, padx=5)
+
+    # Botón para exportar datos
+    btn_export_csv = tk.Button(
+        export_frame, 
+        text="Save Results (CSV)", 
+        command=lambda: export_data_as_csv(),
+        bg="#FF9800",
+        fg="white"
+    )
+    btn_export_csv.pack(side=tk.LEFT, padx=5)
 
     # Results text
     result_text = tk.StringVar()
