@@ -24,8 +24,8 @@ def calculate():
         Tdp = GetTDewPointFromRelHum(Tdb, RH)  # Dew point temperature (°C)
         Twb = GetTWetBulbFromRelHum(Tdb, RH, P_atm)  # Wet bulb temperature (°C)
         h = GetMoistAirEnthalpy(Tdb, W) / 1000  # Enthalpy (kJ/kg dry air)
-        v = GetMoistAirVolume(Tdb, W, P_atm)  # Specific volume (m3/kg dry air)
-        rho = 1 / v  # Density (kg/m3)
+        v = GetMoistAirVolume(Tdb, W, P_atm)  # Specific volume (m³/kg dry air)
+        rho = 1 / v  # Density (kg/m³)
 
         # Convert W to g/kg
         W_g_per_kg = W * 1000
@@ -56,6 +56,7 @@ def calculate():
     except Exception as e:
         messagebox.showerror("Error", f"Calculation error: {e}")
 
+
 def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     # Clear previous plot if exists
     if hasattr(plot_psychrometric_chart, "canvas"):
@@ -68,8 +69,8 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     min_T = min(0, Tdb - 20)
     T_range = np.linspace(min_T, max_T, 300)
 
-    # --- Relative humidity curves from 2% to 100% ---
-    rh_values = [RH,0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    # --- Relative humidity curves from 10% to 100% ---
+    rh_values = [RH, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     for rh in rh_values:
         W_rh = []
         T_valid = []
@@ -95,7 +96,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
             W_rh_array = np.array(W_rh) * 1000  # Convert to g/kg
 
             # Make 10%, 50% and 100% RH lines more prominent
-            if rh in [0.1, 0.5,1.0]:
+            if rh in [0.1, 0.5, 1.0]:
                 line_style = "-"
                 line_width = 1.5
                 line_color = "darkgreen"
@@ -117,94 +118,86 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
 
             # Add label at midpoint of curve (only for prominent lines)
             if len(W_rh) > 2 and rh in [0.1, 0.5, 1.0]:
-                # Seleccionar un punto más representativo (no necesariamente el 80)
-                label_idx = len(W_rh) // 3  # Punto medio de la curva
-
-                # Ajustar posición para evitar superposiciones
+                label_idx = len(W_rh) // 3  # Point at 1/3 of the curve
                 x_pos = T_valid[label_idx]
                 y_pos = W_rh_array[label_idx]
+                y_offset = max(W_rh_array) * 0.01
 
-                # Ajustar verticalmente según la posición en el gráfico
-                y_offset = max(W_rh_array) * 0.01  # 5% del máximo de la curva
-
-                # Rotación del texto siguiendo la pendiente local de la curva
-                if label_idx > 0 and label_idx < len(W_rh)-1:
-                    dx = T_valid[label_idx+1] - T_valid[label_idx-1]
-                    dy = W_rh_array[label_idx+1] - W_rh_array[label_idx-1]
-                    angle = np.degrees(np.arctan2(dy-0.05, dx))
+                # Calculate text rotation angle
+                if label_idx > 0 and label_idx < len(W_rh) - 1:
+                    dx = T_valid[label_idx + 1] - T_valid[label_idx - 1]
+                    dy = W_rh_array[label_idx + 1] - W_rh_array[label_idx - 1]
+                    angle = np.degrees(np.arctan2(dy - 0.05, dx))
                 else:
                     angle = 0
 
                 ax.text(
                     x_pos,
-                    y_pos + y_offset,  # Desplazamiento vertical
-                    f"RH{rh*100:.0f}%",  # Formato más simple
+                    y_pos + y_offset,
+                    f"RH{rh*100:.0f}%",
                     fontsize=9,
                     color=line_color,
                     alpha=0.9,
                     bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.5),
-                    rotation=angle,  # Texto rotado según la curva
-                    rotation_mode='anchor',
-                    ha='center',
-                    va='bottom'
+                    rotation=angle,
+                    rotation_mode="anchor",
+                    ha="center",
+                    va="bottom",
                 )
 
-        # --- Constant wet bulb temperature lines ---
-        wb_step = np.arange(
-            max(0, min(T_range)), min(max(T_range), 100), 5
-        )  # Líneas cada 5°C
-        for Tw in wb_step:
-            W_wb = []
-            valid_T = []
-            for T in T_range:
-                try:
-                    W_val = GetHumRatioFromTWetBulb(T, Tw, P_atm)
-                    if W_val > 0:  # Solo valores positivos
-                        W_wb.append(W_val)
-                        valid_T.append(T)
-                except:
-                    continue
+    # --- Constant wet bulb temperature lines ---
+    wb_step = np.arange(
+        max(0, min(T_range)), min(max(T_range), 100), 5
+    )  # Lines every 5°C
+    for Tw in wb_step:
+        W_wb = []
+        valid_T = []
+        for T in T_range:
+            try:
+                W_val = GetHumRatioFromTWetBulb(T, Tw, P_atm)
+                if W_val > 0:  # Only positive values
+                    W_wb.append(W_val)
+                    valid_T.append(T)
+            except:
+                continue
 
-            if len(W_wb) > 3:
-                W_wb_array = np.array(W_wb) * 1000  # Convertir a g/kg
-                (line,) = ax.plot(
-                    valid_T,
-                    W_wb_array,
+        if len(W_wb) > 3:
+            W_wb_array = np.array(W_wb) * 1000  # Convert to g/kg
+            (line,) = ax.plot(
+                valid_T,
+                W_wb_array,
+                color="blue",
+                linestyle="--",
+                alpha=0.6,  # Increased visibility
+                lw=1,
+            )
+
+            # Better positioned label
+            if len(valid_T) > 0:
+                label_idx = int(len(valid_T) * 0.8)
+                label_idx = min(label_idx, len(valid_T) - 1)
+
+                # Calculate curve angle for text rotation
+                if label_idx > 1 and label_idx < len(valid_T) - 1:
+                    dx = valid_T[label_idx + 1] - valid_T[label_idx - 1]
+                    dy = W_wb_array[label_idx + 1] - W_wb_array[label_idx - 1]
+                    angle = np.degrees(np.arctan2(dy, dx))
+                else:
+                    angle = 0
+
+                ax.text(
+                    valid_T[label_idx],
+                    W_wb_array[label_idx],
+                    f"Twb={Tw}°C",
+                    fontsize=8,
                     color="blue",
-                    linestyle="--",
-                    alpha=0.1,
-                    lw=1,
+                    alpha=0.8,
+                    bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.3),
+                    rotation=angle,
+                    rotation_mode="anchor",
+                    ha="center",
+                    va="center",
                 )
-
-                # Etiqueta mejor posicionada
-                if len(valid_T) > 0:
-                    # Seleccionamos un punto hacia el final de la curva (80%)
-                    label_idx = int(len(valid_T) * 0.8)
-                    label_idx = min(
-                        label_idx, len(valid_T) - 1
-                    )  # Aseguramos que no exceda el rango
-
-                    # Calculamos ángulo de la curva para rotar el texto
-                    if label_idx > 1 and label_idx < len(valid_T) - 1:
-                        dx = valid_T[label_idx + 1] - valid_T[label_idx - 1]
-                        dy = W_wb_array[label_idx + 1] - W_wb_array[label_idx - 1]
-                        angle = np.degrees(np.arctan2(dy, dx))
-                    else:
-                        angle = 0
-
-                    ax.text(
-                        valid_T[label_idx],
-                        W_wb_array[label_idx],
-                        f"Twb={Tw}°C",  # Texto más descriptivo
-                        fontsize=8,
-                        color="blue",
-                        alpha=0.5,
-                        bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.3),
-                        rotation=angle,  # Texto alineado con la curva
-                        rotation_mode="anchor",
-                        ha="center",
-                        va="center",
-                    )
 
     # --- Constant Enthalpy Lines ---
     h_step = 10  # kJ/kg
@@ -234,8 +227,6 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
 
     # --- Second axis for Enthalpy ---
     ax2 = ax.twinx()
-
-    # Set the limits for the second axis based on enthalpy values
     ax2.set_ylim(min_h, max_h)
     ax2.set_ylabel("Enthalpy [kJ/kg]", color="tab:red", labelpad=20)
     ax2.set_yticks([])
@@ -244,11 +235,11 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     for h_val, line, valid_T, W_h_array in enthalpy_lines:
         valid_indices = ~np.isnan(W_h_array)
         if np.any(valid_indices):
-            idx = np.where(valid_indices)[0][-1]  # Último punto válido
+            idx = np.where(valid_indices)[0][-1]  # Last valid point
             ax.text(
                 valid_T[idx],
                 W_h_array[idx],
-                f"{h_val}",  # Muestra el valor de entalpía (ej: "20")
+                f"{h_val}",
                 fontsize=7,
                 color="red",
                 alpha=0.6,
@@ -256,16 +247,13 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
                 va="center",
             )
 
-    # --- Calculated point ---
-    # ax.plot(Tdb, W * 1000, "ro", markersize=8)
-
     # --- Chart formatting ---
     ax.set_title(f"Psychrometric Chart (P = {P_atm/1000:.1f} kPa)")
     ax.set_xlabel("Dry Bulb Temperature (°C)")
     ax.set_ylabel("Humidity Ratio (g/kg dry air)")
     ax.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.5)
 
-    # Set dynamic limits based on the calculated point
+    # Set dynamic limits
     max_y = max(25, W * 1000 * 3.5)
     ax.set_xlim(min_T, max_T)
     ax.set_ylim(0, max_y)
@@ -279,7 +267,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
 
 def export_plot_as_png():
     if not hasattr(plot_psychrometric_chart, "canvas"):
-        messagebox.showerror("Error", "Plot don´t exist")
+        messagebox.showerror("Error", "No plot available")
         return
 
     file_path = tk.filedialog.asksaveasfilename(
@@ -291,14 +279,14 @@ def export_plot_as_png():
     if file_path:
         try:
             plot_psychrometric_chart.canvas.figure.savefig(file_path, dpi=300)
-            messagebox.showinfo("Éxito", f"Plot saved in:\n{file_path}")
+            messagebox.showinfo("Success", f"Plot saved to:\n{file_path}")
         except Exception as e:
-            messagebox.showerror("Error", f"Plot can't be saved:\n{e}")
+            messagebox.showerror("Error", f"Failed to save plot:\n{e}")
 
 
 def export_data_as_csv():
     if not result_text.get().startswith("Atmospheric Pressure:"):
-        messagebox.showerror("Error", "Data don't exist.")
+        messagebox.showerror("Error", "No data available")
         return
 
     file_path = tk.filedialog.asksaveasfilename(
@@ -309,7 +297,7 @@ def export_data_as_csv():
 
     if file_path:
         try:
-            # Extraer datos del texto de resultados
+            # Extract data from results text
             lines = result_text.get().split("\n")
             data = {
                 line.split(":")[0].strip(): line.split(":")[1].strip()
@@ -317,27 +305,27 @@ def export_data_as_csv():
                 if ":" in line
             }
 
-            # Escribir en CSV
+            # Write to CSV
             with open(file_path, mode="w", newline="") as file:
                 writer = csv.writer(file)
-                writer.writerow(["Parámetro", "Valor"])  # Encabezado
+                writer.writerow(["Parameter", "Value"])  # Header
                 for key, value in data.items():
                     writer.writerow([key, value])
 
-            messagebox.showinfo("Éxito", f"Data saved in:\n{file_path}")
+            messagebox.showinfo("Success", f"Data saved to:\n{file_path}")
         except Exception as e:
-            messagebox.showerror("Error", f"Data can't be saved in CSV:\n{e}")
+            messagebox.showerror("Error", f"Failed to save CSV:\n{e}")
 
 
-# __________________Create the GUI application________________________
+# Create the GUI application
 def create_gui():
     global root, frame, entry_temp, entry_rh, result_text, graph_frame
 
     root = tk.Tk()
     root.title("Psychrometric Calculator")
-    root.geometry("800x800")  # Set initial window size
+    root.geometry("800x800")
 
-    # Create main frame with padding
+    # Main frame
     main_frame = tk.Frame(root, padx=10, pady=10)
     main_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -351,14 +339,14 @@ def create_gui():
     )
     entry_temp = tk.Entry(input_frame, width=10)
     entry_temp.grid(row=0, column=1, padx=5, pady=5)
-    entry_temp.insert(0, "25")  # Default value
+    entry_temp.insert(0, "25")
 
     tk.Label(input_frame, text="Relative Humidity (%):").grid(
         row=0, column=2, sticky="e", padx=5, pady=5
     )
     entry_rh = tk.Entry(input_frame, width=10)
     entry_rh.grid(row=0, column=3, padx=5, pady=5)
-    entry_rh.insert(0, "50")  # Default value
+    entry_rh.insert(0, "50")
 
     # Calculate button
     calculate_btn = tk.Button(
@@ -380,23 +368,22 @@ def create_gui():
     export_frame = tk.Frame(results_frame)
     export_frame.pack(fill=tk.X, pady=5)
 
-    # Botón para exportar gráfico
+    # Export buttons
     btn_export_png = tk.Button(
-        export_frame, 
-        text="Save Plot (PNG)", 
-        command=lambda: export_plot_as_png(),
+        export_frame,
+        text="Save Plot (PNG)",
+        command=export_plot_as_png,
         bg="#2196F3",
-        fg="white"
+        fg="white",
     )
     btn_export_png.pack(side=tk.LEFT, padx=5)
 
-    # Botón para exportar datos
     btn_export_csv = tk.Button(
-        export_frame, 
-        text="Save Results (CSV)", 
-        command=lambda: export_data_as_csv(),
+        export_frame,
+        text="Save Results (CSV)",
+        command=export_data_as_csv,
         bg="#FF9800",
-        fg="white"
+        fg="white",
     )
     btn_export_csv.pack(side=tk.LEFT, padx=5)
 
