@@ -70,7 +70,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     T_range = np.linspace(min_T, max_T, 300)
 
     # --- Relative humidity curves from 2% to 100% ---
-    rh_values = [RH, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    rh_values = [RH,0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     for rh in rh_values:
         W_rh = []
         T_valid = []
@@ -78,7 +78,6 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
         for i, T in enumerate(T_range):
             try:
                 Psat = GetSatVapPres(T)
-
                 Pv = rh * Psat
                 W_val = 0.622 * Pv / (P_atm - Pv)
 
@@ -95,24 +94,48 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
         # Only plot if we have valid points
         if len(W_rh) > 0:
             W_rh_array = np.array(W_rh) * 1000  # Convert to g/kg
-            (line,) = ax.plot(T_valid, W_rh_array, "g", alpha=0.5, lw=0.8)
 
-            # Add label at midpoint of curve
-            if len(W_rh) > 2:
-                midpoint_idx = len(W_rh) // 2
+            # Make 10%, 50% and 100% RH lines more prominent
+            if rh in [0.1, 0.5,1.0]:
+                line_style = "-"
+                line_width = 1.5
+                line_color = "darkgreen"
+                alpha = 0.9
+            else:
+                line_style = "-"
+                line_width = 0.8
+                line_color = "g"
+                alpha = 0.5
+
+            (line,) = ax.plot(
+                T_valid,
+                W_rh_array,
+                line_color,
+                linestyle=line_style,
+                alpha=alpha,
+                lw=line_width,
+            )
+
+            # Add label at midpoint of curve (only for prominent lines)
+            if len(W_rh) > 2 and rh in [RH, 0.1, 0.5, 1.0]:
+                midpoint_idx = np.where(W_rh)[0][80]
                 ax.text(
                     T_valid[midpoint_idx],
                     W_rh[midpoint_idx] * 1000,
                     f"{rh*100:.1f}%",
-                    fontsize=7,
-                    color="green",
-                    alpha=0.7,
+                    fontsize=8,
+                    color=line_color,
+                    alpha=0.9,
+                    bbox=dict(facecolor="white", edgecolor="none", alpha=0.5),
                 )
 
     # --- Constant Enthalpy Lines ---
     h_step = 10  # kJ/kg
-    max_h = int(max(50, enthalpy + 50))
-    for h_val in range(0, max_h, h_step):
+    max_h = int(max(50, enthalpy + 80))
+    min_h = int(min(0, enthalpy - 30))
+    enthalpy_lines = []
+
+    for h_val in range(min_h, max_h, h_step):
         W_h = []
         valid_T = []
         for T in T_range:
@@ -130,33 +153,31 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
 
         W_h_array = np.array(W_h) * 1000  # Convert to g/kg
         (line,) = ax.plot(valid_T, W_h_array, "r:", alpha=0.4, lw=0.8)
+        enthalpy_lines.append((h_val, line, valid_T, W_h_array))
 
-        # --- Etiqueta para CADA línea de entalpía ---
+    # --- Second axis for Enthalpy ---
+    ax2 = ax.twinx()
+
+    # Set the limits for the second axis based on enthalpy values
+    ax2.set_ylim(min_h, max_h)
+    ax2.set_ylabel("Enthalpy [kJ/kg]", color="tab:red", labelpad=20)
+    ax2.set_yticks([])
+
+    # Add enthalpy values to the right axis
+    for h_val, line, valid_T, W_h_array in enthalpy_lines:
         valid_indices = ~np.isnan(W_h_array)
         if np.any(valid_indices):
             idx = np.where(valid_indices)[0][-1]  # Último punto válido
             ax.text(
-                valid_T[idx], 
+                valid_T[idx],
                 W_h_array[idx],
                 f"{h_val}",  # Muestra el valor de entalpía (ej: "20")
                 fontsize=7,
                 color="red",
                 alpha=0.6,
                 ha="left",
-                va="center"
+                va="center",
             )
-
-    # --- Label general (fuera del bucle) ---
-    ax.text(
-        0.02, 
-        0.95, 
-        "Enthalpy (kJ/kg)",
-        transform=ax.transAxes,
-        fontsize=9,
-        color="red",
-        alpha=0.7,
-        bbox=dict(facecolor="white", edgecolor="red", boxstyle="round,pad=0.3")
-    )
 
     # --- Constant wet bulb temperature lines ---
     wb_step = 5  # °C
@@ -182,28 +203,27 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
             T_range, np.array(W_wb) * 1000, color="blue", linestyle="--", alpha=0.3
         )
 
-        # Add label at the start of the line
         valid_indices = ~np.isnan(np.array(W_wb))
         if np.any(valid_indices):
-            first_idx = np.where(valid_indices)[0][0]
+            first_idx = np.where(valid_indices)[0][
+                0
+            ]  # Primer punto válido en lugar del último
+            label_y_pos = W_wb[first_idx] * 1000 + 0.8  # Añadir 0.5 g/kg de offset vertical
+
             ax.text(
-                T_range[first_idx],
-                W_wb[first_idx] * 1000,
-                f"Twb={Tw}°C",
+                T_range[first_idx],  # Posición X igual
+                label_y_pos,  # Posición Y con offset
+                f"Twb={Twb:.1f}°C",  # Mostrar Tw actual, no Twb del punto calculado
                 fontsize=7,
                 color="blue",
-                alpha=0.6,
+                alpha=0.8,
+                bbox=dict(
+                    facecolor="white", edgecolor="none", alpha=0.7
+                ),  # Fondo para mejor legibilidad
             )
 
     # --- Calculated point ---
-    ax.plot(Tdb, W * 1000, "ro", markersize=8, label="Current State", )
-    ax.annotate(
-        f"Tdb={Tdb:.1f}°C\nRH={RH*100:.1f}%\nW={W*1000:.1f}g/kg",
-        (Tdb, W * 1000),
-        textcoords="offset points",
-        xytext=(10, 5),
-        bbox=dict(boxstyle="round,pad=0.3", fc="yellow", alpha=0.3),
-    )
+    ax.plot(Tdb, W * 1000, "ro", markersize=8)
 
     # --- Chart formatting ---
     ax.set_title(f"Psychrometric Chart (P = {P_atm/1000:.1f} kPa)")
@@ -212,11 +232,9 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     ax.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.5)
 
     # Set dynamic limits based on the calculated point
-    max_y = max(25, W * 1000 * 1.5)
+    max_y = max(25, W * 1000 * 3.5)
     ax.set_xlim(min_T, max_T)
     ax.set_ylim(0, max_y)
-
-    ax.legend(loc="upper right")
 
     # Display in Tkinter
     canvas = FigureCanvasTkAgg(fig, master=graph_frame)
