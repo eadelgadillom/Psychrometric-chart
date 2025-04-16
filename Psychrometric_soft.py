@@ -56,7 +56,6 @@ def calculate():
     except Exception as e:
         messagebox.showerror("Error", f"Calculation error: {e}")
 
-
 def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     # Clear previous plot if exists
     if hasattr(plot_psychrometric_chart, "canvas"):
@@ -129,6 +128,43 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
                     bbox=dict(facecolor="white", edgecolor="none", alpha=0.5),
                 )
 
+        # --- Constant wet bulb temperature lines ---
+        wb_step = np.arange(max(0, min(T_range)), min(max(T_range), 100), 5)  # Líneas cada 5°C
+        for Tw in wb_step:
+            W_wb = []
+            valid_T = []
+            for T in T_range:
+                try:
+                    W_val = GetHumRatioFromTWetBulb(T, Tw, P_atm)  # Nota el orden de los parámetros
+                    if W_val > 0:  # Solo valores positivos
+                        W_wb.append(W_val)
+                        valid_T.append(T)
+                except:
+                    continue
+            
+            if len(W_wb) > 3:
+                W_wb_array = np.array(W_wb) * 1000  # Convertir a g/kg
+                line, = ax.plot(
+                    valid_T,
+                    W_wb_array,
+                    color="blue",
+                    linestyle="--",
+                    alpha=0.1,
+                    lw=1
+                )
+                
+                # Etiqueta al final de la línea
+                if len(valid_T) > 0:
+                    ax.text(
+                        valid_T[1],
+                        W_wb_array[1],
+                        f"{Tw}°C",
+                        fontsize=7,
+                        color="blue",
+                        alpha=0.1,
+                        bbox=dict(facecolor='white', edgecolor='none', alpha=0.0)
+                    )             
+                
     # --- Constant Enthalpy Lines ---
     h_step = 10  # kJ/kg
     max_h = int(max(50, enthalpy + 80))
@@ -179,51 +215,8 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
                 va="center",
             )
 
-    # --- Constant wet bulb temperature lines ---
-    wb_step = 5  # °C
-    max_wb = int(max(30, Twb + 15))
-    min_wb = int(min(0, Twb - 15))
-    for Tw in range(min_wb, max_wb, wb_step):
-        W_wb = []
-        valid_T = []
-        for T in T_range:
-            if Tw <= T:
-                try:
-                    W_val = GetHumRatioFromTWetBulb(Tw, T, P_atm)
-                    W_wb.append(W_val)
-                    valid_T.append(T)
-                except:
-                    W_wb.append(np.nan)
-                    valid_T.append(np.nan)
-            else:
-                W_wb.append(np.nan)
-                valid_T.append(np.nan)
-
-        (line,) = ax.plot(
-            T_range, np.array(W_wb) * 1000, color="blue", linestyle="--", alpha=0.3
-        )
-
-        valid_indices = ~np.isnan(np.array(W_wb))
-        if np.any(valid_indices):
-            first_idx = np.where(valid_indices)[0][
-                0
-            ]  # Primer punto válido en lugar del último
-            label_y_pos = W_wb[first_idx] * 1000 + 5  # Añadir 0.5 g/kg de offset vertical
-
-            ax.text(
-                T_range[first_idx],  # Posición X igual
-                label_y_pos,  # Posición Y con offset
-                f"Twb={Twb:.1f}°C",  # Mostrar Tw actual, no Twb del punto calculado
-                fontsize=7,
-                color="blue",
-                alpha=0.8,
-                bbox=dict(
-                    facecolor="white", edgecolor="none", alpha=0.7
-                ),  # Fondo para mejor legibilidad
-            )
-
     # --- Calculated point ---
-    ax.plot(Tdb, W * 1000, "ro", markersize=8)
+    #ax.plot(Tdb, W * 1000, "ro", markersize=8)
 
     # --- Chart formatting ---
     ax.set_title(f"Psychrometric Chart (P = {P_atm/1000:.1f} kPa)")
