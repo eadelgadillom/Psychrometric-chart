@@ -62,15 +62,15 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     if hasattr(plot_psychrometric_chart, "canvas"):
         plot_psychrometric_chart.canvas.get_tk_widget().destroy()
 
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(8, 8))
 
     # Adjust T_range based on input temperature
-    max_T = max(50, Tdb + 20)
+    max_T = max(50, Tdb + 10)
     min_T = min(0, Tdb - 20)
     T_range = np.linspace(min_T, max_T, 300)
 
     # --- Relative humidity curves from 10% to 100% ---
-    rh_values = [RH, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    rh_values = [0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     for rh in rh_values:
         W_rh = []
         T_valid = []
@@ -117,11 +117,11 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
             )
 
             # Add label at midpoint of curve (only for prominent lines)
-            if len(W_rh) > 2 and rh in [0.1, 0.5, 1.0]:
+            if len(W_rh) > 2 and rh in [0.02, 0.05, 0.1, 0.5, 1.0]:
                 label_idx = len(W_rh) // 3  # Point at 1/3 of the curve
                 x_pos = T_valid[label_idx]
                 y_pos = W_rh_array[label_idx]
-                y_offset = max(W_rh_array) * 0.01
+                y_offset = max(W_rh_array) * 0.00
 
                 # Calculate text rotation angle
                 if label_idx > 0 and label_idx < len(W_rh) - 1:
@@ -181,14 +181,14 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
                 if label_idx > 1 and label_idx < len(valid_T) - 1:
                     dx = valid_T[label_idx + 1] - valid_T[label_idx - 1]
                     dy = W_wb_array[label_idx + 1] - W_wb_array[label_idx - 1]
-                    angle = np.degrees(np.arctan2(dy, dx))
+                    angle = np.degrees(np.arctan2(dy-0.3, dx))
                 else:
                     angle = 0
-
-                ax.text(
+                if Tw == 45:
+                    ax.text(
                     valid_T[label_idx],
                     W_wb_array[label_idx],
-                    f"Twb={Tw}°C",
+                    f"Wet Bulb Temperature {Tw}°C",
                     fontsize=8,
                     color="blue",
                     alpha=0.8,
@@ -197,11 +197,25 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
                     rotation_mode="anchor",
                     ha="center",
                     va="center",
-                )
+                    )
+                else:    
+                    ax.text(
+                        valid_T[label_idx],
+                        W_wb_array[label_idx],
+                        f"{Tw}°C",
+                        fontsize=8,
+                        color="blue",
+                        alpha=0.8,
+                        bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.3),
+                        rotation=angle,
+                        rotation_mode="anchor",
+                        ha="center",
+                        va="center",
+                    )
 
     # --- Constant Enthalpy Lines ---
     h_step = 10  # kJ/kg
-    max_h = int(max(50, enthalpy + 80))
+    max_h = int(max(50, enthalpy + 100))
     min_h = int(min(0, enthalpy - 30))
     enthalpy_lines = []
 
@@ -323,7 +337,7 @@ def create_gui():
 
     root = tk.Tk()
     root.title("Psychrometric Calculator")
-    root.geometry("800x800")
+    root.geometry("800x1000")
 
     # Main frame
     main_frame = tk.Frame(root, padx=10, pady=10)
