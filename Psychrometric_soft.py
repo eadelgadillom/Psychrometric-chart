@@ -116,55 +116,96 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
             )
 
             # Add label at midpoint of curve (only for prominent lines)
-            if len(W_rh) > 2 and rh in [RH, 0.1, 0.5, 1.0]:
-                midpoint_idx = np.where(W_rh)[0][80]
+            if len(W_rh) > 2 and rh in [0.1, 0.5, 1.0]:
+                # Seleccionar un punto más representativo (no necesariamente el 80)
+                label_idx = len(W_rh) // 3  # Punto medio de la curva
+
+                # Ajustar posición para evitar superposiciones
+                x_pos = T_valid[label_idx]
+                y_pos = W_rh_array[label_idx]
+
+                # Ajustar verticalmente según la posición en el gráfico
+                y_offset = max(W_rh_array) * 0.01  # 5% del máximo de la curva
+
+                # Rotación del texto siguiendo la pendiente local de la curva
+                if label_idx > 0 and label_idx < len(W_rh)-1:
+                    dx = T_valid[label_idx+1] - T_valid[label_idx-1]
+                    dy = W_rh_array[label_idx+1] - W_rh_array[label_idx-1]
+                    angle = np.degrees(np.arctan2(dy-0.05, dx))
+                else:
+                    angle = 0
+
                 ax.text(
-                    T_valid[midpoint_idx],
-                    W_rh[midpoint_idx] * 1000,
-                    f"{rh*100:.1f}%",
-                    fontsize=8,
+                    x_pos,
+                    y_pos + y_offset,  # Desplazamiento vertical
+                    f"RH{rh*100:.0f}%",  # Formato más simple
+                    fontsize=9,
                     color=line_color,
                     alpha=0.9,
-                    bbox=dict(facecolor="white", edgecolor="none", alpha=0.5),
+                    bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.5),
+                    rotation=angle,  # Texto rotado según la curva
+                    rotation_mode='anchor',
+                    ha='center',
+                    va='bottom'
                 )
 
         # --- Constant wet bulb temperature lines ---
-        wb_step = np.arange(max(0, min(T_range)), min(max(T_range), 100), 5)  # Líneas cada 5°C
+        wb_step = np.arange(
+            max(0, min(T_range)), min(max(T_range), 100), 5
+        )  # Líneas cada 5°C
         for Tw in wb_step:
             W_wb = []
             valid_T = []
             for T in T_range:
                 try:
-                    W_val = GetHumRatioFromTWetBulb(T, Tw, P_atm)  # Nota el orden de los parámetros
+                    W_val = GetHumRatioFromTWetBulb(T, Tw, P_atm)
                     if W_val > 0:  # Solo valores positivos
                         W_wb.append(W_val)
                         valid_T.append(T)
                 except:
                     continue
-            
+
             if len(W_wb) > 3:
                 W_wb_array = np.array(W_wb) * 1000  # Convertir a g/kg
-                line, = ax.plot(
+                (line,) = ax.plot(
                     valid_T,
                     W_wb_array,
                     color="blue",
                     linestyle="--",
                     alpha=0.1,
-                    lw=1
+                    lw=1,
                 )
-                
-                # Etiqueta al final de la línea
+
+                # Etiqueta mejor posicionada
                 if len(valid_T) > 0:
+                    # Seleccionamos un punto hacia el final de la curva (80%)
+                    label_idx = int(len(valid_T) * 0.8)
+                    label_idx = min(
+                        label_idx, len(valid_T) - 1
+                    )  # Aseguramos que no exceda el rango
+
+                    # Calculamos ángulo de la curva para rotar el texto
+                    if label_idx > 1 and label_idx < len(valid_T) - 1:
+                        dx = valid_T[label_idx + 1] - valid_T[label_idx - 1]
+                        dy = W_wb_array[label_idx + 1] - W_wb_array[label_idx - 1]
+                        angle = np.degrees(np.arctan2(dy, dx))
+                    else:
+                        angle = 0
+
                     ax.text(
-                        valid_T[1],
-                        W_wb_array[1],
-                        f"{Tw}°C",
-                        fontsize=7,
+                        valid_T[label_idx],
+                        W_wb_array[label_idx],
+                        f"Twb={Tw}°C",  # Texto más descriptivo
+                        fontsize=8,
                         color="blue",
-                        alpha=0.1,
-                        bbox=dict(facecolor='white', edgecolor='none', alpha=0.0)
-                    )             
-                
+                        alpha=0.5,
+                        bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.3),
+                        rotation=angle,  # Texto alineado con la curva
+                        rotation_mode="anchor",
+                        ha="center",
+                        va="center",
+                    )
+
     # --- Constant Enthalpy Lines ---
     h_step = 10  # kJ/kg
     max_h = int(max(50, enthalpy + 80))
@@ -216,7 +257,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
             )
 
     # --- Calculated point ---
-    #ax.plot(Tdb, W * 1000, "ro", markersize=8)
+    # ax.plot(Tdb, W * 1000, "ro", markersize=8)
 
     # --- Chart formatting ---
     ax.set_title(f"Psychrometric Chart (P = {P_atm/1000:.1f} kPa)")
