@@ -208,7 +208,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
             first_idx = np.where(valid_indices)[0][
                 0
             ]  # Primer punto válido en lugar del último
-            label_y_pos = W_wb[first_idx] * 1000 + 0.8  # Añadir 0.5 g/kg de offset vertical
+            label_y_pos = W_wb[first_idx] * 1000 + 5  # Añadir 0.5 g/kg de offset vertical
 
             ax.text(
                 T_range[first_idx],  # Posición X igual
