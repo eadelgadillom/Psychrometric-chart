@@ -118,7 +118,10 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
 
             # Add label at midpoint of curve (only for prominent lines)
             if len(W_rh) > 2 and rh in [0.02, 0.05, 0.1, 0.5, 1.0]:
-                label_idx = len(W_rh) // 3  # Point at 1/3 of the curve
+                if rh < 0.1 :
+                    label_idx = len(W_rh) // 2
+                else:
+                    label_idx = len(W_rh) // 3
                 x_pos = T_valid[label_idx]
                 y_pos = W_rh_array[label_idx]
                 y_offset = max(W_rh_array) * 0.00
@@ -181,7 +184,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
                 if label_idx > 1 and label_idx < len(valid_T) - 1:
                     dx = valid_T[label_idx + 1] - valid_T[label_idx - 1]
                     dy = W_wb_array[label_idx + 1] - W_wb_array[label_idx - 1]
-                    angle = np.degrees(np.arctan2(dy-0.3, dx))
+                    angle = np.degrees(np.arctan2(dy, dx))
                 else:
                     angle = 0
                 if Tw == 45:
@@ -214,8 +217,8 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
                     )
 
     # --- Constant Enthalpy Lines ---
-    h_step = 10  # kJ/kg
-    max_h = int(max(50, enthalpy + 100))
+    h_step = 20  # kJ/kg
+    max_h = int(max(50, enthalpy + 150))
     min_h = int(min(0, enthalpy - 30))
     enthalpy_lines = []
 
@@ -268,7 +271,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     ax.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.5)
 
     # Set dynamic limits
-    max_y = max(25, W * 1000 * 3.5)
+    max_y = max(25, W * 1000 * 5.5)
     ax.set_xlim(min_T, max_T)
     ax.set_ylim(0, max_y)
 
