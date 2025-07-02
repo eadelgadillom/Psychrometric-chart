@@ -2,14 +2,18 @@ import tkinter as tk
 from tkinter import messagebox
 from psychrolib import *
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import host_subplot
+import mpl_toolkits.axisartist as AA
 import numpy as np
+import scipy.interpolate
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from adjustText import adjust_text
 import csv
+import matplotlib.ticker as ticker
+
 
 # Set SI Units
 SetUnitSystem(SI)
-
 
 def calculate():
     try:
@@ -34,18 +38,18 @@ def calculate():
         Tsat = Twb
 
         result_text.set(
-            f"Atmospheric Pressure: {P_atm:.2f} Pa\n"
+            #f"Atmospheric Pressure: {P_atm:.2f} Pa\n"
             f"Dry Bulb Temperature: {Tdb:.2f} °C\n"
-            f"Relative Humidity: {RH*100:.2f} %\n"
-            f"Humidity Ratio: {W_g_per_kg:.3f} g/kg dry air\n"
-            f"Dew Point Temperature: {Tdp:.2f} °C\n"
-            f"Wet Bulb Temperature: {Twb:.2f} °C\n"
-            f"Saturation Temperature: {Tsat:.2f} °C (approx)\n"
-            f"Enthalpy: {h:.2f} kJ/kg dry air\n"
-            f"Vapor Pressure: {Pv:.2f} Pa\n"
-            f"Saturation Vapor Pressure: {Psat:.2f} Pa\n"
-            f"Specific Volume: {v:.3f} m³/kg dry air\n"
-            f"Density: {rho:.3f} kg/m³"
+            #f"Relative Humidity: {RH*100:.2f} %\n"
+            #f"Humidity Ratio: {W_g_per_kg:.3f} g/kg dry air\n"
+            #f"Dew Point Temperature: {Tdp:.2f} °C\n"
+            #f"Wet Bulb Temperature: {Twb:.2f} °C\n"
+            #f"Saturation Temperature: {Tsat:.2f} °C (approx)\n"
+            #f"Enthalpy: {h:.2f} kJ/kg dry air\n"
+            #f"Vapor Pressure: {Pv:.2f} Pa\n"
+            #f"Saturation Vapor Pressure: {Psat:.2f} Pa\n"
+            #f"Specific Volume: {v:.3f} m³/kg dry air\n"
+            #f"Density: {rho:.3f} kg/m³"
         )
 
         # Plot the psychrometric chart with the calculated point
@@ -74,12 +78,14 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     for rh in rh_values:
         W_rh = []
         T_valid = []
+        Dew_pt = []
 
         for i, T in enumerate(T_range):
             try:
                 Psat = GetSatVapPres(T)
                 Pv = rh * Psat
                 W_val = 0.622 * Pv / (P_atm - Pv)
+                Dew_t = GetTDewPointFromRelHum(T, rh)
 
                 # Check if this W value is decreasing (curve starting to bend back)
                 if i > 0 and len(W_rh) > 0 and W_val < W_rh[-1]:
@@ -87,6 +93,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
 
                 W_rh.append(W_val)
                 T_valid.append(T)
+                Dew_pt.append(Dew_t)
             except:
                 # If calculation fails, stop this curve
                 break
@@ -176,9 +183,9 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
             )
 
             # Better positioned label
-            if len(valid_T) > 0:
+            if Tw >= 35 and len(valid_T) > 0:  # Evita etiquetas para Tw < 5°C
                 label_idx = int(len(valid_T) * 0.8)
-                label_idx = min(label_idx, len(valid_T) - 1)
+                
 
                 # Calculate curve angle for text rotation
                 if label_idx > 1 and label_idx < len(valid_T) - 1:
@@ -191,6 +198,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
                     ax.text(
                     valid_T[label_idx],
                     W_wb_array[label_idx],
+                    
                     f"Wet Bulb Temperature {Tw}°C",
                     fontsize=8,
                     color="blue",
@@ -248,33 +256,90 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
     ax2.set_ylabel("Enthalpy [kJ/kg]", color="tab:red", labelpad=20)
     ax2.set_yticks([])
 
-    # Add enthalpy values to the right axis
+    # Add enthalpy values to the right axis (inclinado)
     for h_val, line, valid_T, W_h_array in enthalpy_lines:
         valid_indices = ~np.isnan(W_h_array)
         if np.any(valid_indices):
-            idx = np.where(valid_indices)[0][-1]  # Last valid point
+            idx = np.where(valid_indices)[0][
+                -2
+            ]  # penúltimo punto válido para evitar fuera de rango
+
+            # Calcular ángulo de la curva
+            if idx > 0 and idx < len(valid_T) - 1:
+                dx = valid_T[idx + 1] - valid_T[idx - 1]
+                dy = W_h_array[idx + 1] - W_h_array[idx - 1]
+                angle = np.degrees(np.arctan2(dy, dx))
+            else:
+                angle = 0
+
             ax.text(
                 valid_T[idx],
                 W_h_array[idx],
                 f"{h_val}",
                 fontsize=7,
                 color="red",
-                alpha=0.6,
+                alpha=0.7,
                 ha="left",
-                va="center",
+                va="bottom",
+                rotation=angle,
+                rotation_mode="anchor",
+                bbox=dict(facecolor="white", edgecolor="none", alpha=0.6, pad=0.2),
             )
 
     # --- Chart formatting ---
     ax.set_title(f"Psychrometric Chart (P = {P_atm/1000:.1f} kPa)")
     ax.set_xlabel("Dry Bulb Temperature (°C)")
     ax.set_ylabel("Humidity Ratio (g/kg dry air)")
-    ax.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.5)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))   # Cada 10°C
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(2))    # Cada 2°C (menores)
+
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(10))   # Cada 10 g/kg
+    ax.yaxis.set_minor_locator(ticker.MultipleLocator(2))    # Cada 2 g/kg (menores)
+
+    ax.minorticks_on()
+    ax.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.25)
 
     # Set dynamic limits
     max_y = max(25, W * 1000 * 5.5)
     ax.set_xlim(min_T, max_T)
     ax.set_ylim(0, max_y)
 
+    # --- Third axis for Dew Point Temperature on the left ---
+    ax_dew = ax.twinx()
+    ax_dew.spines["left"].set_position(("outward", 60))  # Mover 60 puntos hacia fuera
+    ax_dew.spines["right"].set_visible(False)  # Ocultar el eje derecho duplicado
+
+    # Configurar los mismos límites que el eje de humedad
+    ax_dew.set_ylim(ax.get_ylim())
+
+    # Crear ticks equidistantes
+    tick_positions = np.linspace(0,70,8)  # 8 ticks entre 0 y 70
+    dew_labels = []
+    Tdb_fixed = 180  # °C fijo para que el cálculo de RH sea válido
+
+    for W_g in tick_positions:
+        try:
+            W = W_g / 1000
+            Psat = GetSatVapPres(Tdb_fixed)
+            Pv = (W * P_atm) / (0.622 + W)
+            RH = Pv / Psat
+            RH = min(RH, 1.0)  # Límite superior físico
+            Tdp_val = GetTDewPointFromRelHum(Tdb_fixed, RH)
+            dew_labels.append(f"{Tdp_val:.1f}")
+        except Exception:
+            dew_labels.append("")
+    # Aplicar ticks y labels
+    ax_dew.set_yticks(tick_positions)
+    ax_dew.set_yticklabels(dew_labels, color="purple", fontsize=8)
+    ax_dew.yaxis.set_label_position("left")
+    ax_dew.yaxis.set_ticks_position("left")
+    ax_dew.set_ylabel("Dew Point Temp (°C)", color="purple", labelpad=15)
+    ax_dew.tick_params(axis='y', colors='purple', labelsize=8)
+
+    # Ajustar el orden de visualización
+    ax_dew.set_zorder(2)
+    ax.set_zorder(1)
+    ax.patch.set_visible(False)  # Hacer transparente el fondo para ver el eje dew point
     # Display in Tkinter
     canvas = FigureCanvasTkAgg(fig, master=graph_frame)
     canvas.draw()
