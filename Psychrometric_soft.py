@@ -182,47 +182,58 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
                 lw=1,
             )
 
-            # Better positioned label
-            if Tw >= 35 and len(valid_T) > 0:  # Evita etiquetas para Tw < 5°C
+            # Mejor posicionamiento de etiquetas
+            if Tw >= 35 and len(valid_T) > 0:
                 label_idx = int(len(valid_T) * 0.8)
-                
 
-                # Calculate curve angle for text rotation
-                if label_idx > 1 and label_idx < len(valid_T) - 1:
-                    dx = valid_T[label_idx + 1] - valid_T[label_idx - 1]
-                    dy = W_wb_array[label_idx + 1] - W_wb_array[label_idx - 1]
-                    angle = np.degrees(np.arctan2(dy, dx))
-                else:
-                    angle = 0
-                if Tw == 45:
-                    ax.text(
-                    valid_T[label_idx],
-                    W_wb_array[label_idx],
-                    
-                    f"Wet Bulb Temperature {Tw}°C",
-                    fontsize=8,
-                    color="blue",
-                    alpha=0.8,
-                    bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.3),
-                    rotation=angle,
-                    rotation_mode="anchor",
-                    ha="center",
-                    va="center",
-                    )
-                else:    
-                    ax.text(
-                        valid_T[label_idx],
-                        W_wb_array[label_idx],
-                        f"{Tw}°C",
-                        fontsize=8,
-                        color="blue",
-                        alpha=0.8,
-                        bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=0.3),
-                        rotation=angle,
-                        rotation_mode="anchor",
-                        ha="center",
-                        va="center",
-                    )
+                # Verificar si la etiqueta se superpondrá
+                show_label = True
+                x = valid_T[label_idx]
+                y = W_wb_array[label_idx]
+
+                # Si el punto está muy cerca del borde inferior, no mostrar etiqueta
+                if y < 2:  # 2 g/kg, ajustar según convenga
+                    show_label = False
+
+                if show_label:
+                    if label_idx > 1 and label_idx < len(valid_T) - 1:
+                        dx = valid_T[label_idx + 1] - valid_T[label_idx - 1]
+                        dy = W_wb_array[label_idx + 1] - W_wb_array[label_idx - 1]
+                        angle = np.degrees(np.arctan2(dy, dx))
+                    else:
+                        angle = 0
+                    if Tw == 45:
+                        ax.text(
+                            x,
+                            y,
+                            f"Wet Bulb Temperature {Tw}°C",
+                            fontsize=8,
+                            color="blue",
+                            alpha=0.8,
+                            bbox=dict(
+                                facecolor="white", edgecolor="none", alpha=0.7, pad=0.3
+                            ),
+                            rotation=angle,
+                            rotation_mode="anchor",
+                            ha="center",
+                            va="center",
+                        )
+                    else:
+                        ax.text(
+                            x,
+                            y,
+                            f"{Tw}°C",
+                            fontsize=8,
+                            color="blue",
+                            alpha=0.8,
+                            bbox=dict(
+                                facecolor="white", edgecolor="none", alpha=0.7, pad=0.3
+                            ),
+                            rotation=angle,
+                            rotation_mode="anchor",
+                            ha="center",
+                            va="center",
+                        )
 
     # --- Constant Enthalpy Lines ---
     h_step = 20  # kJ/kg
@@ -306,7 +317,7 @@ def plot_psychrometric_chart(Tdb, RH, P_atm, W, Tdp, Twb, Pv, Psat, enthalpy):
 
     # --- Third axis for Dew Point Temperature on the left ---
     ax_dew = ax.twinx()
-    ax_dew.spines["left"].set_position(("outward", 60))  # Mover 60 puntos hacia fuera
+    ax_dew.spines["left"].set_position(("outward", 40))  # Mover 60 puntos hacia fuera
     ax_dew.spines["right"].set_visible(False)  # Ocultar el eje derecho duplicado
 
     # Configurar los mismos límites que el eje de humedad
