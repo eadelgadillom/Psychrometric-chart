@@ -19,7 +19,7 @@ def calculate():
     try:
         Tdb = float(entry_temp.get())  # Dry bulb temperature (°C)
         RH = float(entry_rh.get()) / 100.0  # Relative Humidity (0-1)
-        P_atm = 101325  # Atmospheric pressure (Pa)
+        P_atm = 102800  # Atmospheric pressure (Pa)
 
         # Psychrometric calculations
         Psat = GetSatVapPres(Tdb)  # Saturation vapor pressure at Tdb
@@ -38,18 +38,18 @@ def calculate():
         Tsat = Twb
 
         result_text.set(
-            #f"Atmospheric Pressure: {P_atm:.2f} Pa\n"
+            f"Atmospheric Pressure: {P_atm:.2f} Pa\n"
             f"Dry Bulb Temperature: {Tdb:.2f} °C\n"
-            #f"Relative Humidity: {RH*100:.2f} %\n"
-            #f"Humidity Ratio: {W_g_per_kg:.3f} g/kg dry air\n"
-            #f"Dew Point Temperature: {Tdp:.2f} °C\n"
-            #f"Wet Bulb Temperature: {Twb:.2f} °C\n"
-            #f"Saturation Temperature: {Tsat:.2f} °C (approx)\n"
-            #f"Enthalpy: {h:.2f} kJ/kg dry air\n"
-            #f"Vapor Pressure: {Pv:.2f} Pa\n"
-            #f"Saturation Vapor Pressure: {Psat:.2f} Pa\n"
-            #f"Specific Volume: {v:.3f} m³/kg dry air\n"
-            #f"Density: {rho:.3f} kg/m³"
+            f"Relative Humidity: {RH*100:.2f} %\n"
+            f"Humidity Ratio: {W_g_per_kg:.3f} g/kg dry air\n"
+            f"Dew Point Temperature: {Tdp:.2f} °C\n"
+            f"Wet Bulb Temperature: {Twb:.2f} °C\n"
+            f"Saturation Temperature: {Tsat:.2f} °C (approx)\n"
+            f"Enthalpy: {h:.2f} kJ/kg dry air\n"
+            f"Vapor Pressure: {Pv:.2f} Pa\n"
+            f"Saturation Vapor Pressure: {Psat:.2f} Pa\n"
+            f"Specific Volume: {v:.3f} m³/kg dry air\n"
+            f"Density: {rho:.3f} kg/m³"
         )
 
         # Plot the psychrometric chart with the calculated point
